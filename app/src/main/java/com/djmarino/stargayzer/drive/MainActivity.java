@@ -77,6 +77,8 @@ public final class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        // HA serves /local/ with a 31-day cache: always ask the hub, so a deployed Drive or Orbital shows at once
+        s.setCacheMode(WebSettings.LOAD_NO_CACHE);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         s.setAllowFileAccess(false);
         s.setUserAgentString(s.getUserAgentString() + " StarGayzerDrive/" + BuildConfig.VERSION_NAME);
