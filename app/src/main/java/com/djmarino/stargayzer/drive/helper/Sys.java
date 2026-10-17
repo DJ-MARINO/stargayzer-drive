@@ -125,19 +125,20 @@ final class Sys {
     }
 
     /**
-     * A trusted, touchable display only its own apps go to. Private (no FLAG_PUBLIC) first: the X10 has
-     * force_desktop_mode_on_external_displays=1, which gives every public non-default display a status bar,
-     * gesture bar and a launcher. Shell owns the display, so `am start` (as shell) may still launch on it,
-     * and apps launched there get access. Falls back to fewer flags, then public, if refused.
+     * A private, untrusted, touchable display only its own apps go to. The X10 has
+     * force_desktop_mode_on_external_displays=1, which gives every trusted non-default display system
+     * decorations: Launcher3's taskbar and secondary home on it, and the Home key, when focus was last in a
+     * frame, opened a launcher inside the frame. Untrusted displays never get decorations. Shell holds
+     * INTERNAL_SYSTEM_WINDOW, so `am start --display` (as shell) may still launch any app there, and the
+     * keyboard falls back to the main screen. Falls back to trusted, then public, if refused.
+     * No ROTATES_WITH_CONTENT: the display stays at its natural rotation (see HelperService.lockRotation).
      */
     static VirtualDisplay createDisplay(String name, int w, int h, int dpi, Surface surface) throws Exception {
-        int base = FLAG_OWN_CONTENT_ONLY | FLAG_SUPPORTS_TOUCH | FLAG_ROTATES_WITH_CONTENT;
-        int full = FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED;
+        int base = FLAG_OWN_CONTENT_ONLY | FLAG_SUPPORTS_TOUCH;
         int[] tries = {
-            base | full,
-            base | FLAG_TRUSTED,
+            base | FLAG_OWN_DISPLAY_GROUP | FLAG_TOUCH_FEEDBACK_DISABLED,
             base,
-            FLAG_PUBLIC | base | full,
+            base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED,
             FLAG_PUBLIC | base,
         };
         Exception last = null;
