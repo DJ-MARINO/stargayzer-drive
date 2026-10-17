@@ -73,7 +73,10 @@ case "${1:-loop}" in
     adb -s "$s" shell 'am stack list | sed -n "s/^RootTask id=\([0-9]*\) .*displayId=\([0-9]*\).*/\1 \2/p" |
       while read id d; do [ "$d" != 0 ] && am display move-stack "$id" 0; done;
       ps -A -o PID,ARGS | awk '\''$2=="stargayzer-helper"{print $1}'\'' | xargs -r kill'
-    sleep 2; pass ;;
+    sleep 2; pass
+    # Drive back in front (the moved apps would otherwise cover it until Home is pressed); its frames then
+    # pull the apps back in when shown
+    adb -s "$s" shell am start -n /.MainActivity >/dev/null ;;
   stop)
     # not pkill -f: the pattern would match this adb shell command itself
     s=$(connect) && adb -s "$s" shell 'ps -A -o PID,ARGS | awk '\''$2=="stargayzer-helper"{print $1}'\'' | xargs -r kill'
