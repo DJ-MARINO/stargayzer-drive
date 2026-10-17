@@ -157,18 +157,51 @@ final class Bridge {
         am.setStreamVolume(AudioManager.STREAM_MUSIC, (int) Math.round(Math.max(0, Math.min(1, v)) * max), 0);
     }
 
-    /** Android settings: "wifi", "bluetooth", or the main page. */
+    /**
+     * Settings: "wifi", "bluetooth" (ATOTO's Bluetooth app with the paired phones: the phones use ATOTO's own
+     * Bluetooth chip, which Android's Bluetooth settings never see), "android" (stock Android Settings, not
+     * ATOTO's skin), or ATOTO's settings for anything else.
+     */
     @JavascriptInterface
     public void settings(String which) {
         if (!ok()) return;
-        String action = "wifi".equals(which) ? Settings.ACTION_WIFI_SETTINGS
-                : "bluetooth".equals(which) ? Settings.ACTION_BLUETOOTH_SETTINGS
-                : Settings.ACTION_SETTINGS;
+        Intent i;
+        if ("wifi".equals(which)) i = new Intent(Settings.ACTION_WIFI_SETTINGS);
+        else if ("bluetooth".equals(which)) {
+            i = a.getPackageManager().getLaunchIntentForPackage("com.zhonghong.bluetooth");
+            if (i == null) i = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+        } else if ("android".equals(which))
+            i = new Intent().setClassName("com.android.settings", "com.android.settings.homepage.SettingsHomepageActivity");
+        else i = new Intent(Settings.ACTION_SETTINGS);
+        final Intent go = i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         a.runOnUiThread(() -> {
-            try { a.startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-            catch (ActivityNotFoundException e) { Log.w(MainActivity.TAG, "settings " + which, e); }
+            try { a.startActivity(go); }
+            catch (Exception e) {
+                Log.w(MainActivity.TAG, "settings " + which, e);
+                try { a.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
+            }
         });
     }
+
+    /** GPS: {lat, lon, spd m/s, brg, alt m, acc m, age s, gps}. */
+    @JavascriptInterface
+    public String location() { return ok() ? Live.location() : "{}"; }
+
+    /** What is playing: {pkg, app, title, artist, album, playing, pos, dur, art}; {noAccess:true} without notification access. */
+    @JavascriptInterface
+    public String media() { return ok() ? Live.media(a) : "{}"; }
+
+    /** "play", "pause", "toggle", "next", "prev". */
+    @JavascriptInterface
+    public void mediaCmd(String cmd) { if (ok() && cmd != null) Live.mediaCmd(a, cmd); }
+
+    /** Google Maps' navigation notification: {title, text, sub, big, t}; "{}" when not navigating. */
+    @JavascriptInterface
+    public String nav() { return ok() ? NotifListener.nav : "{}"; }
+
+    /** {online, via, ssid}. */
+    @JavascriptInterface
+    public String net() { return ok() ? Live.net(a) : "{}"; }
 
     /** Exit StarGayzer: ATOTO's launcher becomes Home again and opens. */
     @JavascriptInterface

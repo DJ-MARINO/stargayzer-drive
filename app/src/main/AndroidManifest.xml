@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- GPS speed, heading and elevation for Drive's Home; the Wi-Fi name. Granted once over adb (pm grant). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Granted once over adb (pm grant). Lets Drive turn Wireless debugging back on after a boot so
          the Pi can start the helper. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
@@ -54,6 +58,17 @@
             android:name=".HelperProvider"
             android:authorities="com.djmarino.stargayzer.drive.helper"
             android:exported="true" />
+
+        <!-- Notification access (cmd notification allow_listener): media sessions and Maps' next turn. -->
+        <service
+            android:name=".NotifListener"
+            android:exported="true"
+            android:label="StarGayzer Drive"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".BootReceiver"

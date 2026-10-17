@@ -96,6 +96,7 @@ public final class MainActivity extends Activity {
         immersive();
 
         HelperLink.listen(helperListener);
+        Live.start(this);
         handleIntent(getIntent());
         web.loadUrl(driveUrl());
     }
@@ -119,6 +120,12 @@ public final class MainActivity extends Activity {
             wantHome = true;
             claimHome();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Live.start(this);   // no-op once running; picks up a location grant made after the first start
     }
 
     @Override

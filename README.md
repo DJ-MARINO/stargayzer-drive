@@ -38,6 +38,14 @@ adb shell pm grant com.djmarino.stargayzer.drive android.permission.WRITE_SECURE
 adb shell am start -n com.djmarino.stargayzer.drive/.MainActivity
 ```
 
+Live data on Drive's Home (GPS speed and heading, what is playing with its controls, Google Maps' next turn,
+the network) needs two grants, once:
+
+```
+adb shell pm grant com.djmarino.stargayzer.drive android.permission.ACCESS_FINE_LOCATION
+adb shell cmd notification allow_listener com.djmarino.stargayzer.drive/com.djmarino.stargayzer.drive.NotifListener
+```
+
 First start: log in to Home Assistant once in the page that opens (keep "Keep me logged in" ticked).
 Then make it Home: Settings > Apps > Default apps > Home app, or
 `adb shell cmd package set-home-activity com.djmarino.stargayzer.drive/.MainActivity`.
