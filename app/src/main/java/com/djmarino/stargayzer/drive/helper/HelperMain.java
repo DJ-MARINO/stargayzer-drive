@@ -1,8 +1,10 @@
 package com.djmarino.stargayzer.drive.helper;
 
 import android.net.LocalServerSocket;
+import android.os.Handler;
 import android.os.Looper;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -19,7 +21,7 @@ import java.io.IOException;
 public final class HelperMain {
     public static final String PKG = "com.djmarino.stargayzer.drive";
     public static final String AUTHORITY = PKG + ".helper";
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     static final String TAG = "SGDriveHelper";
 
     private HelperMain() {}
@@ -43,6 +45,19 @@ public final class HelperMain {
         }
         HelperService service = new HelperService();
         service.offer();
+        // After an app update the APK we were started from is gone: quit, and the Pi starts the new one.
+        final File apk = new File(System.getProperty("java.class.path", ""));
+        final Handler main = new Handler(Looper.getMainLooper());
+        main.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (!apk.exists()) {
+                    Sys.log("Drive was updated (" + apk + " gone); quitting so the new helper can start");
+                    service.quit();
+                    return;
+                }
+                main.postDelayed(this, 15000);
+            }
+        }, 15000);
         System.out.println("stargayzer-drive-helper: running, version " + VERSION);
         Looper.loop();
         try { lock.close(); } catch (IOException ignored) {}

@@ -54,7 +54,7 @@ public final class MainActivity extends Activity {
     private AppFrame lastFrame;
     private long lastFrameAt;
     private boolean wantHome;
-    private int loginChecks;
+    private boolean loginPolling;
     private final Runnable helperListener = this::helperChanged;
 
     String ha() { return prefs.getString("ha", DEFAULT_HA); }
@@ -272,20 +272,22 @@ public final class MainActivity extends Activity {
             web.evaluateJavascript("!!localStorage.getItem('hassTokens')", v -> {
                 if ("false".equals(v)) {
                     Log.i(TAG, "no HA login yet, opening HA's login page");
-                    loginChecks = 0;
                     web.loadUrl(ha() + "/");
                 }
             });
-        } else if (isHaPage(url)) {
+        } else if (isHaPage(url) && !loginPolling) {
+            loginPolling = true;
             pollLogin();
         }
     }
 
+    /** While on an HA page other than Drive, check every second for the login; no time limit (it can
+     *  take a while, e.g. a forgotten password). Stops once Drive is loaded again. */
     private void pollLogin() {
         main.postDelayed(() -> {
-            if (!isHaPage(pageUrl) || pageUrl.startsWith(driveUrl()) || loginChecks++ > 300) return;
+            if (!isHaPage(pageUrl) || pageUrl.startsWith(driveUrl())) { loginPolling = false; return; }
             web.evaluateJavascript("!!localStorage.getItem('hassTokens')", v -> {
-                if ("true".equals(v)) web.loadUrl(driveUrl());
+                if ("true".equals(v)) { loginPolling = false; web.loadUrl(driveUrl()); }
                 else pollLogin();
             });
         }, 1000);

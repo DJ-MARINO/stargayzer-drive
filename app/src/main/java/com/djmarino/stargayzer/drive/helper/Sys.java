@@ -124,14 +124,21 @@ final class Sys {
         return displayManager;
     }
 
-    /** A trusted, touchable display only its own apps go to. Falls back to fewer flags if refused. */
+    /**
+     * A trusted, touchable display only its own apps go to. Private (no FLAG_PUBLIC) first: the X10 has
+     * force_desktop_mode_on_external_displays=1, which gives every public non-default display a status bar,
+     * gesture bar and a launcher. Shell owns the display, so `am start` (as shell) may still launch on it,
+     * and apps launched there get access. Falls back to fewer flags, then public, if refused.
+     */
     static VirtualDisplay createDisplay(String name, int w, int h, int dpi, Surface surface) throws Exception {
-        int base = FLAG_PUBLIC | FLAG_OWN_CONTENT_ONLY | FLAG_SUPPORTS_TOUCH | FLAG_ROTATES_WITH_CONTENT;
+        int base = FLAG_OWN_CONTENT_ONLY | FLAG_SUPPORTS_TOUCH | FLAG_ROTATES_WITH_CONTENT;
+        int full = FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED;
         int[] tries = {
-            base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED,
-            base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP,
+            base | full,
             base | FLAG_TRUSTED,
             base,
+            FLAG_PUBLIC | base | full,
+            FLAG_PUBLIC | base,
         };
         Exception last = null;
         for (int flags : tries) {
