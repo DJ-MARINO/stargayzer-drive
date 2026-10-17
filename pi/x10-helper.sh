@@ -76,7 +76,7 @@ case "${1:-loop}" in
     sleep 2; pass
     # Drive back in front (the moved apps would otherwise cover it until Home is pressed); its frames then
     # pull the apps back in when shown
-    adb -s "$s" shell am start -n /.MainActivity >/dev/null ;;
+    adb -s "$s" shell am start -n "$PKG/.MainActivity" >/dev/null ;;
   stop)
     # not pkill -f: the pattern would match this adb shell command itself
     s=$(connect) && adb -s "$s" shell 'ps -A -o PID,ARGS | awk '\''$2=="stargayzer-helper"{print $1}'\'' | xargs -r kill'
