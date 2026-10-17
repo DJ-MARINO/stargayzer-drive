@@ -111,8 +111,22 @@ final class HelperService extends IDriveHelper.Stub {
             int id = vd.getDisplay().getDisplayId();
             byName.put(name, vd);
             byId.put(id, vd);
+            lockRotation(id);
             return id;
         });
+    }
+
+    /**
+     * Keep the display at its natural rotation. Otherwise an app asking for landscape (Google Maps) on a
+     * frame that is slightly taller than wide turns the whole display, and Drive shows it sideways.
+     */
+    private static void lockRotation(int id) {
+        String d = String.valueOf(id);
+        new Thread(() -> {
+            Sys.run("wm", "set-ignore-orientation-request", "-d", d, "true");
+            Sys.run("wm", "fixed-to-user-rotation", "-d", d, "enabled");
+            Sys.run("wm", "user-rotation", "-d", d, "lock", "0");
+        }, "lock-rotation").start();
     }
 
     @Override
