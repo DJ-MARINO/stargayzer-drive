@@ -254,6 +254,19 @@ public final class MainActivity extends Activity {
             Log.w(TAG, "frames " + json, e);
         }
         for (AppFrame f : frames.values()) if (!shown.contains(f.name)) f.setVisibility(View.GONE);
+        holdFocusForFrames(!shown.isEmpty() && HelperLink.get() != null);
+    }
+
+    /**
+     * Missed taps in a frame: every press lands on Drive's window first, and Android moved input focus to
+     * Drive and then back to the app with each tap; some controls (Maps) spend the first tap after regaining
+     * focus just taking it. While a frame shows, Drive's window does not take focus, so the app keeps it.
+     */
+    private void holdFocusForFrames(boolean framesShown) {
+        int nf = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        boolean now = (getWindow().getAttributes().flags & nf) != 0;
+        if (framesShown && !now) getWindow().addFlags(nf);
+        else if (!framesShown && now) getWindow().clearFlags(nf);
     }
 
     // ---- page ----
