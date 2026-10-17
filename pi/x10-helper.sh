@@ -4,7 +4,7 @@
 # helper is not running, start it from the installed Drive APK (as the shell user, detached so it keeps
 # running after adb disconnects). Drive turns Wireless debugging on after each boot (BootReceiver).
 #
-# One-time setup on the Pi:  sudo apt install adb
+# One-time setup on the Pi:  sudo apt install adb avahi-utils
 #   then pair with the code shown under Settings > Developer options > Wireless debugging > Pair device:
 #   adb pair X10_IP:PAIR_PORT CODE
 #
@@ -14,14 +14,15 @@
 set -u
 PKG=com.djmarino.stargayzer.drive
 MAIN=com.djmarino.stargayzer.drive.helper.HelperMain
-SERIAL_HINT=${X10_SERIAL_HINT:-adb-916afbf0}   # mDNS instance name prefix of the X10 (adb mdns services)
-export ADB_MDNS_OPENSCREEN=1
+SERIAL_HINT=${X10_SERIAL_HINT:-adb-916afbf0}   # mDNS instance name prefix of the X10
 
 log() { echo "x10-helper: $*"; }
 
 find_x10() {
-  # "adb-916afbf0-eyj0DI   _adb-tls-connect._tcp   192.168.1.232:42417"
-  adb mdns services 2>/dev/null | awk -v h="$SERIAL_HINT" '$1 ~ "^"h && $2 ~ /_adb-tls-connect/ {print $3; exit}'
+  # adb's own mDNS discovery sees nothing on the Pi (avahi-daemon owns 5353), so ask Avahi (avahi-utils):
+  # "=;wlan0;IPv4;adb-916afbf0-eyj0DI;_adb-tls-connect._tcp;local;Android.local;192.168.1.232;37107;..."
+  timeout 8 avahi-browse -rpt _adb-tls-connect._tcp 2>/dev/null |
+    awk -F';' -v h="$SERIAL_HINT" '$1=="=" && $3=="IPv4" && index($4,h)==1 {print $8":"$9; exit}'
 }
 
 connect() {

@@ -51,7 +51,7 @@ adb shell 'CLASSPATH=$(pm path com.djmarino.stargayzer.drive | cut -d: -f2) sets
 ## Pi
 
 `pi/x10-helper.sh` (to `/usr/local/bin`) and `pi/x10-helper.service` (to `/etc/systemd/system`).
-Needs `sudo apt install adb` (Debian 13's adb 34 supports wireless pairing) and one `adb pair`.
+Needs `sudo apt install adb avahi-utils` (Debian 13's adb 34 supports wireless pairing) and one `adb pair`.
 
 ## Build
 
