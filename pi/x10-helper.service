@@ -1,0 +1,13 @@
+[Unit]
+Description=Keep StarGayzer Drive's helper running on the ATOTO X10
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=jared
+ExecStart=/usr/local/bin/x10-helper.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

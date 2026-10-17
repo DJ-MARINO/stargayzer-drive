@@ -1,0 +1,64 @@
+plugins {
+    id "com.android.application"
+}
+
+base {
+    archivesName = "stargayzer-drive"
+}
+
+android {
+    namespace "com.djmarino.stargayzer.drive"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.djmarino.stargayzer.drive"
+        minSdk 30
+        targetSdk 33
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    buildFeatures {
+        aidl true
+        buildConfig true
+    }
+
+    // One fixed key, so updates install over the old build (adb install -r) and keep the HA login in the
+    // WebView and the adb grants. The key is not in the repo: CI writes it from the DRIVE_KEYSTORE_B64 and
+    // DRIVE_KEYSTORE_PASSWORD secrets. Without them the build uses a throwaway debug key.
+    def ks = file("../keystore/drive.p12")
+    def ksPassword = System.getenv("DRIVE_KEYSTORE_PASSWORD")
+    def hasKey = ks.exists() && ksPassword
+    if (hasKey) {
+        signingConfigs {
+            sideload {
+                storeFile ks
+                storeType "pkcs12"
+                storePassword ksPassword
+                keyAlias "drive"
+                keyPassword ksPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (hasKey) signingConfig signingConfigs.sideload
+        }
+        release {
+            minifyEnabled false
+            if (hasKey) signingConfig signingConfigs.sideload
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    lint {
+        disable "ProtectedPermissions", "SetJavaScriptEnabled", "PrivateApi", "DiscouragedPrivateApi",
+                "SoonBlockedPrivateApi", "BlockedPrivateApi", "OldTargetApi", "ExpiredTargetSdkVersion"
+        abortOnError false
+    }
+}

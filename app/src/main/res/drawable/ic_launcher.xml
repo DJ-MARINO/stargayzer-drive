@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ring + star mark from the Orbital headers, on near black. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0a0a0b"
+        android:pathData="M54,4a50,50 0,1 1,0 100a50,50 0,1 1,0 -100z" />
+    <path
+        android:strokeColor="#f2f2f2"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M54,24a30,30 0,1 1,0 60a30,30 0,1 1,0 -60z" />
+    <path
+        android:fillColor="#e8b04b"
+        android:pathData="M78,22 L80.5,28.5 L87,31 L80.5,33.5 L78,40 L75.5,33.5 L69,31 L75.5,28.5 Z" />
+</vector>

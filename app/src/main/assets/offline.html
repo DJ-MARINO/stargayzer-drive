@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StarGayzer</title>
+<style>
+html,body{height:100%;margin:0;background:#0a0a0b;color:#f2f2f2;font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+main{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:0 40px;box-sizing:border-box}
+svg{width:96px;height:96px}
+h1{font-weight:300;font-size:40px;margin:0}
+p{color:#7d8085;font-size:20px;margin:0;max-width:640px;line-height:1.4}
+.row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+button{height:64px;padding:0 30px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:none;color:#f2f2f2;font:500 17px system-ui;letter-spacing:.12em;text-transform:uppercase}
+button:active{background:rgba(255,255,255,.06)}
+#st{font-family:ui-monospace,monospace;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:#e8b04b}
+</style></head>
+<body><main>
+<svg viewBox="0 0 108 108"><circle cx="54" cy="54" r="30" fill="none" stroke="#f2f2f2" stroke-width="3"/><path fill="#e8b04b" d="M78 22l2.5 6.5L87 31l-6.5 2.5L78 40l-2.5-6.5L69 31l6.5-2.5z"/></svg>
+<h1>Home Assistant is not answering</h1>
+<p>Drive comes from the StarGayzer hub. Check that the head unit is on the StarGayzer Wi-Fi and the Pi is running. Trying again every 10 seconds.</p>
+<div id="st">Waiting</div>
+<div class="row">
+  <button onclick="go()">Try now</button>
+  <button onclick="SGA.settings('wifi')">Wi-Fi</button>
+  <button onclick="SGA.exit()">ATOTO home</button>
+</div>
+</main>
+<script>
+const st=document.getElementById('st');let n=0;
+function go(){st.textContent='Trying';SGA.retry()}
+window.sgaOffline=()=>{n++;st.textContent='Not reachable · try '+n};
+setInterval(go,10000);
+</script>
+</body></html>

@@ -1,0 +1,166 @@
+package com.djmarino.stargayzer.drive.helper;
+
+import android.hardware.display.VirtualDisplay;
+import android.os.Binder;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Parcel;
+import android.os.RemoteException;
+import android.os.SystemClock;
+import android.view.InputDevice;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.Surface;
+
+import com.djmarino.stargayzer.drive.IDriveHelper;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * The helper's binder. Only Drive's own uid (and adb: shell, root) may call it. Displays live as long as
+ * the helper: hiding a frame only detaches its surface, so Maps keeps navigating while Drive shows
+ * another screen. Displays are created without DESTROY_CONTENT_ON_REMOVAL: if the helper dies, the apps
+ * move to the main screen instead of closing.
+ */
+final class HelperService extends IDriveHelper.Stub {
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private final Map<String, VirtualDisplay> byName = new ConcurrentHashMap<>();
+    private final Map<Integer, VirtualDisplay> byId = new ConcurrentHashMap<>();
+    private volatile int appUid = -1;
+    private volatile IBinder appToken;
+    private boolean offering;
+
+    /** Keeps offering our binder to Drive every 3 s until Drive says hello. */
+    void offer() {
+        if (offering) return;
+        offering = true;
+        main.post(new Runnable() {
+            @Override public void run() {
+                if (appToken != null) { offering = false; return; }
+                appUid = Sys.packageUid(HelperMain.PKG);
+                if (appUid >= 0) Sys.sendBinder(HelperService.this);
+                main.postDelayed(this, 3000);
+            }
+        });
+    }
+
+    @Override
+    public boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+        if (code != INTERFACE_TRANSACTION) {
+            int uid = Binder.getCallingUid();
+            if (uid != appUid && uid != Sys.SHELL_UID && uid != 0) {
+                Sys.log("refused call from uid " + uid);
+                return false;
+            }
+        }
+        return super.onTransact(code, data, reply, flags);
+    }
+
+    private <T> T onMain(Callable<T> c) throws RemoteException {
+        FutureTask<T> task = new FutureTask<>(c);
+        main.post(task);
+        try {
+            return task.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            Sys.log("main thread task", e);
+            throw new RemoteException(String.valueOf(e));
+        }
+    }
+
+    @Override public int version() { return HelperMain.VERSION; }
+
+    @Override
+    public void hello(IBinder token) {
+        // Not via onMain: Drive calls this from inside our own sendBinder(), which holds the main thread.
+        appToken = token;
+        Sys.log("Drive connected");
+        try {
+            token.linkToDeath(() -> main.post(() -> {
+                Sys.log("Drive went away; keeping displays, offering again");
+                if (appToken == token) appToken = null;
+                for (VirtualDisplay vd : byId.values()) vd.setSurface(null);
+                offer();
+            }), 0);
+        } catch (RemoteException e) {
+            appToken = null;
+            main.post(this::offer);
+        }
+    }
+
+    @Override
+    public int display(String name, Surface surface, int width, int height, int dpi) throws RemoteException {
+        return onMain(() -> {
+            VirtualDisplay vd = byName.get(name);
+            if (vd != null) {
+                vd.resize(width, height, dpi);
+                vd.setSurface(surface);
+                return vd.getDisplay().getDisplayId();
+            }
+            try {
+                vd = Sys.createDisplay(name, width, height, dpi, surface);
+            } catch (Exception e) {
+                Sys.log("createDisplay " + name, e);
+                return -1;
+            }
+            int id = vd.getDisplay().getDisplayId();
+            byName.put(name, vd);
+            byId.put(id, vd);
+            return id;
+        });
+    }
+
+    @Override
+    public void detach(int displayId) throws RemoteException {
+        onMain(() -> {
+            VirtualDisplay vd = byId.get(displayId);
+            if (vd != null) vd.setSurface(null);
+            return null;
+        });
+    }
+
+    @Override
+    public boolean launch(int displayId, String component) {
+        if (!byId.containsKey(displayId) || component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;
+        // 0x10000000 NEW_TASK | 0x00200000 RESET_TASK_IF_NEEDED, like a launcher tap
+        return Sys.run("am", "start", "--display", String.valueOf(displayId), "--windowingMode", "1",
+                "-f", "0x10200000", "-a", "android.intent.action.MAIN",
+                "-c", "android.intent.category.LAUNCHER", "-n", component) == 0;
+    }
+
+    @Override
+    public void touch(int displayId, MotionEvent event) {
+        if (byId.containsKey(displayId)) Sys.inject(event, displayId);
+    }
+
+    @Override
+    public void key(int displayId, int keyCode) {
+        if (!byId.containsKey(displayId)) return;
+        long now = SystemClock.uptimeMillis();
+        for (int action : new int[] {KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP}) {
+            KeyEvent e = new KeyEvent(now, now, action, keyCode, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                    KeyEvent.FLAG_FROM_SYSTEM | KeyEvent.FLAG_VIRTUAL_HARD_KEY, InputDevice.SOURCE_KEYBOARD);
+            Sys.inject(e, displayId);
+        }
+    }
+
+    @Override
+    public boolean setHome(String component) {
+        if (component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;
+        return Sys.run("cmd", "package", "set-home-activity", component) == 0;
+    }
+
+    @Override
+    public void quit() {
+        Sys.log("quit requested");
+        main.post(() -> {
+            for (VirtualDisplay vd : byId.values()) vd.release();
+            System.exit(0);
+        });
+    }
+}
