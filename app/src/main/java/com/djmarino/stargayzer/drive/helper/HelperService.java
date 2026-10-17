@@ -139,7 +139,7 @@ final class HelperService extends IDriveHelper.Stub {
     }
 
     @Override
-    public boolean launch(int displayId, String component) {
+    public synchronized boolean launch(int displayId, String component) {
         if (!byId.containsKey(displayId) || component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;
         // Safe to call again and again: when the app is already on this display nothing happens; when its
         // window ended up elsewhere (Drive restarted and the frames' displays were made anew, or the app
@@ -149,7 +149,7 @@ final class HelperService extends IDriveHelper.Stub {
         // Playing opens full screen on the main display instead), so each one found elsewhere is moved back.
         String pkg = component.substring(0, component.indexOf('/'));
         int root = -1, on = -1;
-        boolean here = false;
+        boolean here = false, open = false;
         java.util.Set<Integer> moved = new java.util.HashSet<>();
         for (String line : Sys.output("am", "stack", "list").split("\n")) {
             java.util.regex.Matcher m = ROOT_TASK.matcher(line);
@@ -159,6 +159,7 @@ final class HelperService extends IDriveHelper.Stub {
                 continue;
             }
             if (!line.contains("taskId=") || !line.contains(": " + pkg + "/")) continue;
+            open = true;
             if (on == displayId) { here = true; continue; }
             if (root >= 0 && moved.add(root)
                     && Sys.run("am", "display", "move-stack", String.valueOf(root), String.valueOf(displayId)) == 0) {
@@ -166,7 +167,9 @@ final class HelperService extends IDriveHelper.Stub {
                 here = true;
             }
         }
-        if (here) return true;
+        // Never start an app that is already open somewhere: a launcher start resets it (Maps drops its route).
+        // A failed move (e.g. it got there a moment ago) is retried by the next check instead.
+        if (here || open) return true;
         // 0x10000000 NEW_TASK | 0x00200000 RESET_TASK_IF_NEEDED, like a launcher tap
         return Sys.run("am", "start", "--display", String.valueOf(displayId), "--windowingMode", "1",
                 "-f", "0x10200000", "-a", "android.intent.action.MAIN",
