@@ -141,6 +141,20 @@ final class Sys {
             base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED,
             FLAG_PUBLIC | base,
         };
+        // For experiments without a rebuild: hex flag sets, comma separated, tried first.
+        try {
+            String s = new String(java.nio.file.Files.readAllBytes(
+                    java.nio.file.Paths.get("/data/local/tmp/stargayzer-flags"))).trim();
+            if (!s.isEmpty()) {
+                String[] parts = s.split("[,\\s]+");
+                int[] custom = new int[parts.length + tries.length];
+                for (int i = 0; i < parts.length; i++) custom[i] = Integer.parseInt(parts[i].replace("0x", ""), 16);
+                System.arraycopy(tries, 0, custom, parts.length, tries.length);
+                tries = custom;
+                log("display flags from /data/local/tmp/stargayzer-flags: " + s);
+            }
+        } catch (java.io.IOException | NumberFormatException ignored) {
+        }
         Exception last = null;
         for (int flags : tries) {
             try {
