@@ -21,7 +21,7 @@ import java.io.IOException;
 public final class HelperMain {
     public static final String PKG = "com.djmarino.stargayzer.drive";
     public static final String AUTHORITY = PKG + ".helper";
-    public static final int VERSION = 7;
+    public static final int VERSION = 8;
     static final String TAG = "SGDriveHelper";
 
     private HelperMain() {}

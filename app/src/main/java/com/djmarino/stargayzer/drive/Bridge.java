@@ -197,7 +197,7 @@ final class Bridge {
 
     /** Google Maps' navigation notification: {title, text, sub, big, t}; "{}" when not navigating. */
     @JavascriptInterface
-    public String nav() { return ok() ? NotifListener.nav : "{}"; }
+    public String nav() { return ok() ? NotifListener.nav() : "{}"; }
 
     /** {online, via, ssid}. */
     @JavascriptInterface

@@ -145,8 +145,12 @@ final class HelperService extends IDriveHelper.Stub {
         // window ended up elsewhere (Drive restarted and the frames' displays were made anew, or the app
         // restarted itself, e.g. Spotify after an account switch) the window is moved back; otherwise the app
         // is started here.
+        // Every window of the app counts: Android refuses some screens on a frame's display (Spotify's Now
+        // Playing opens full screen on the main display instead), so each one found elsewhere is moved back.
         String pkg = component.substring(0, component.indexOf('/'));
         int root = -1, on = -1;
+        boolean here = false;
+        java.util.Set<Integer> moved = new java.util.HashSet<>();
         for (String line : Sys.output("am", "stack", "list").split("\n")) {
             java.util.regex.Matcher m = ROOT_TASK.matcher(line);
             if (m.find()) {
@@ -154,14 +158,15 @@ final class HelperService extends IDriveHelper.Stub {
                 on = Integer.parseInt(m.group(2));
                 continue;
             }
-            if (line.contains("taskId=") && line.contains(": " + pkg + "/")) {
-                if (on == displayId) return true;
-                if (root >= 0 && Sys.run("am", "display", "move-stack", String.valueOf(root), String.valueOf(displayId)) == 0) {
-                    Sys.log("moved " + pkg + " to display " + displayId);
-                    return true;
-                }
+            if (!line.contains("taskId=") || !line.contains(": " + pkg + "/")) continue;
+            if (on == displayId) { here = true; continue; }
+            if (root >= 0 && moved.add(root)
+                    && Sys.run("am", "display", "move-stack", String.valueOf(root), String.valueOf(displayId)) == 0) {
+                Sys.log("moved " + pkg + " task " + root + " to display " + displayId);
+                here = true;
             }
         }
+        if (here) return true;
         // 0x10000000 NEW_TASK | 0x00200000 RESET_TASK_IF_NEEDED, like a launcher tap
         return Sys.run("am", "start", "--display", String.valueOf(displayId), "--windowingMode", "1",
                 "-f", "0x10200000", "-a", "android.intent.action.MAIN",

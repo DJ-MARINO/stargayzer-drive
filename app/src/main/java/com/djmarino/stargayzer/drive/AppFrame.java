@@ -73,6 +73,8 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
 
     // while the frame is on screen, check every 5 s that its app is still there (apps can restart themselves
     // onto the main screen, e.g. Spotify after switching accounts); the helper only acts when it is not
+    private final Runnable quickCheck = () -> { if (getVisibility() == VISIBLE && pkg != null && displayId >= 0) launch(); };
+
     private final Runnable recheck = new Runnable() {
         @Override public void run() {
             if (getVisibility() != VISIBLE || pkg == null) return;
@@ -149,6 +151,11 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
         IDriveHelper hp = HelperLink.get();
         if (hp == null || displayId < 0) return true;
         activity.touchedFrame(this);
+        // a tap can open a screen Android will not put on our display (it lands full screen on the main one):
+        // check right away a few times so it comes back within a fraction of a second, not 5 s
+        if (ev.getActionMasked() == MotionEvent.ACTION_UP) {
+            for (int ms : new int[] {150, 450, 900, 1600, 3000}) postDelayed(quickCheck, ms);
+        }
         try {
             hp.touch(displayId, ev);
         } catch (RemoteException ignored) {

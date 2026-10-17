@@ -14,45 +14,47 @@ import org.json.JSONObject;
  */
 public final class NotifListener extends NotificationListenerService {
     static final String MAPS = "com.google.android.apps.maps";
-    static volatile String nav = "{}";
     static volatile boolean connected;
+    private static volatile NotifListener instance;
 
     @Override
     public void onListenerConnected() {
         connected = true;
-        try {
-            for (StatusBarNotification n : getActiveNotifications()) onNotificationPosted(n);
-        } catch (Exception ignored) {
-        }
+        instance = this;
     }
 
     @Override
     public void onListenerDisconnected() {
         connected = false;
+        instance = null;
     }
 
-    @Override
-    public void onNotificationPosted(StatusBarNotification sbn) {
-        if (!MAPS.equals(sbn.getPackageName())) return;
-        Notification n = sbn.getNotification();
-        // Maps' navigation notification is ongoing; other Maps notifications (traffic, tips) are not
-        if ((n.flags & Notification.FLAG_ONGOING_EVENT) == 0) return;
-        Bundle e = n.extras;
+    /**
+     * Maps' navigation notification as it is right now: {title, text, sub, big, t}, or "{}" when Maps is not
+     * navigating. Read live from the active notifications each time (never a remembered copy), so the card
+     * clears the moment a route ends.
+     */
+    static String nav() {
+        NotifListener l = instance;
+        if (l == null) return "{}";
         try {
-            nav = new JSONObject()
-                    .put("title", str(e.getCharSequence(Notification.EXTRA_TITLE)))
-                    .put("text", str(e.getCharSequence(Notification.EXTRA_TEXT)))
-                    .put("sub", str(e.getCharSequence(Notification.EXTRA_SUB_TEXT)))
-                    .put("big", str(e.getCharSequence(Notification.EXTRA_BIG_TEXT)))
-                    .put("t", System.currentTimeMillis())
-                    .toString();
+            for (StatusBarNotification sbn : l.getActiveNotifications()) {
+                if (!MAPS.equals(sbn.getPackageName())) continue;
+                Notification n = sbn.getNotification();
+                // the navigation notification is ongoing; other Maps notifications (traffic, tips) are not
+                if ((n.flags & Notification.FLAG_ONGOING_EVENT) == 0) continue;
+                Bundle e = n.extras;
+                String title = str(e.getCharSequence(Notification.EXTRA_TITLE));
+                String text = str(e.getCharSequence(Notification.EXTRA_TEXT));
+                if (title.isEmpty() && text.isEmpty()) continue;
+                return new JSONObject().put("title", title).put("text", text)
+                        .put("sub", str(e.getCharSequence(Notification.EXTRA_SUB_TEXT)))
+                        .put("big", str(e.getCharSequence(Notification.EXTRA_BIG_TEXT)))
+                        .put("t", sbn.getPostTime()).toString();
+            }
         } catch (Exception ignored) {
         }
-    }
-
-    @Override
-    public void onNotificationRemoved(StatusBarNotification sbn) {
-        if (MAPS.equals(sbn.getPackageName()) && (sbn.getNotification().flags & Notification.FLAG_ONGOING_EVENT) != 0) nav = "{}";
+        return "{}";
     }
 
     private static String str(CharSequence c) { return c == null ? "" : c.toString(); }
