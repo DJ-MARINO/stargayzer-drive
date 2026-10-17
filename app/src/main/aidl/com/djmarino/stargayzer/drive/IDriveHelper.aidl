@@ -25,6 +25,10 @@ interface IDriveHelper {
 
     oneway void key(int displayId, int keyCode);
 
+    // Pixels at the bottom of the display that a system bar reserves (ATOTO's Launcher3 adds its
+    // taskbar to every display). Drive makes the display that much taller and lets it run off the screen.
+    int bottomInset(int displayId);
+
     // cmd package set-home-activity
     boolean setHome(String component);
 

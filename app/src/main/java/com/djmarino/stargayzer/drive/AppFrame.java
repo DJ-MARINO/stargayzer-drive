@@ -33,6 +33,35 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
 
     int displayId() { return displayId; }
 
+    /** Extra pixels below the visible frame: the strip a system bar reserves on the display. */
+    private volatile int extra;
+    private int checks;
+
+    int extra() { return extra; }
+
+    /** Ask the helper how much the bottom bar reserves; soon after attaching, then every 30 s. */
+    private final Runnable checkInset = new Runnable() {
+        @Override public void run() {
+            IDriveHelper hp = HelperLink.get();
+            final int id = displayId;
+            if (hp == null || id < 0 || getVisibility() != VISIBLE) return;
+            new Thread(() -> {
+                int v;
+                try { v = hp.bottomInset(id); } catch (RemoteException e) { return; }
+                final int nv = v;
+                post(() -> {
+                    if (nv != extra) {
+                        extra = nv;
+                        activity.relayoutFrames();
+                    }
+                    int delay = checks++ < 4 ? 1500 : 30000;
+                    removeCallbacks(checkInset);
+                    postDelayed(checkInset, delay);
+                });
+            }, "frame-inset").start();
+        }
+    };
+
     void setPackage(String p) {
         if (p == null || p.equals(pkg)) return;
         pkg = p;
@@ -74,6 +103,11 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
             displayId = -1;
         }
         if (displayId >= 0 && pkg != null && !pkg.equals(launched)) launch();
+        if (displayId >= 0) {
+            checks = 0;
+            removeCallbacks(checkInset);
+            postDelayed(checkInset, 800);
+        }
     }
 
     private void launch() {

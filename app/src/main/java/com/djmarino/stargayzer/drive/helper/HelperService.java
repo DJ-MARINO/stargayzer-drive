@@ -163,6 +163,32 @@ final class HelperService extends IDriveHelper.Stub {
         }
     }
 
+    private static final java.util.regex.Pattern BAR = java.util.regex.Pattern.compile(
+            "InsetsSource type=ITYPE_(?:EXTRA_NAVIGATION_BAR|NAVIGATION_BAR|BOTTOM_TAPPABLE_ELEMENT) "
+            + "frame=\\[(-?\\d+),(-?\\d+)\\]\\[(-?\\d+),(-?\\d+)\\] visible=true");
+
+    @Override
+    public int bottomInset(int displayId) {
+        if (!byId.containsKey(displayId)) return 0;
+        int height = byId.get(displayId).getDisplay().getMode().getPhysicalHeight();
+        boolean in = false;
+        int inset = 0;
+        for (String line : Sys.output("dumpsys", "window", "displays").split("\n")) {
+            if (line.contains("Display: mDisplayId=")) {
+                if (in) break;
+                in = line.contains("Display: mDisplayId=" + displayId + " ");
+                continue;
+            }
+            if (!in) continue;
+            java.util.regex.Matcher m = BAR.matcher(line);
+            if (m.find()) {
+                int top = Integer.parseInt(m.group(2)), bottom = Integer.parseInt(m.group(4));
+                if (bottom >= height - 2 && bottom > top) inset = Math.max(inset, bottom - top);
+            }
+        }
+        return inset;
+    }
+
     @Override
     public boolean setHome(String component) {
         if (component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;

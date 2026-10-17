@@ -209,10 +209,21 @@ public final class MainActivity extends Activity {
 
     // ---- frames (called by Bridge on the UI thread) ----
 
-    /** json: [{name:"a", pkg:"com.google.android.apps.maps", x, y, w, h}] in CSS px of the page. */
+    private String lastFrames = "[]";
+
+    /** A frame learned how much its display's bottom bar reserves: lay the frames out again. */
+    void relayoutFrames() { setFrames(lastFrames); }
+
+    /**
+     * json: [{name:"a", pkg:"com.google.android.apps.maps", x, y, w, h}] in CSS px of the page.
+     * A frame that reaches the bottom of the screen is made taller by the strip its display's bottom bar
+     * reserves (ATOTO's taskbar), so that strip runs off the screen and the app fills the visible frame.
+     */
     void setFrames(String json) {
+        lastFrames = json;
         Set<String> shown = new HashSet<>();
         float density = getResources().getDisplayMetrics().density;
+        int screenH = root.getHeight();
         try {
             JSONArray arr = new JSONArray(json);
             for (int i = 0; i < arr.length(); i++) {
@@ -224,6 +235,7 @@ public final class MainActivity extends Activity {
                 lp.topMargin = Math.round((float) o.getDouble("y") * density);
                 lp.width = Math.max(1, Math.round((float) o.getDouble("w") * density));
                 lp.height = Math.max(1, Math.round((float) o.getDouble("h") * density));
+                if (screenH > 0 && lp.topMargin + lp.height >= screenH - 2) lp.height += f.extra();
                 f.setLayoutParams(lp);
                 f.setPackage(o.optString("pkg", null));
                 if (HelperLink.get() != null) f.setVisibility(View.VISIBLE);
