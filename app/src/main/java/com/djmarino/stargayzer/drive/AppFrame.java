@@ -62,11 +62,24 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
         }
     };
 
+    /** Called each time Drive shows this frame: also makes sure the app is still on our display. */
     void setPackage(String p) {
-        if (p == null || p.equals(pkg)) return;
+        if (p == null) return;
         pkg = p;
-        if (displayId >= 0 && !p.equals(launched)) launch();
+        if (displayId >= 0) launch();
+        removeCallbacks(recheck);
+        postDelayed(recheck, 5000);
     }
+
+    // while the frame is on screen, check every 5 s that its app is still there (apps can restart themselves
+    // onto the main screen, e.g. Spotify after switching accounts); the helper only acts when it is not
+    private final Runnable recheck = new Runnable() {
+        @Override public void run() {
+            if (getVisibility() != VISIBLE || pkg == null) return;
+            if (displayId >= 0) launch();
+            postDelayed(this, 5000);
+        }
+    };
 
     /** The helper (re)connected: draw again and make sure our app is on the display. */
     void helperChanged() {

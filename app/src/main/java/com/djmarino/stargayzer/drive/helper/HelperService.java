@@ -141,11 +141,35 @@ final class HelperService extends IDriveHelper.Stub {
     @Override
     public boolean launch(int displayId, String component) {
         if (!byId.containsKey(displayId) || component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;
+        // Safe to call again and again: when the app is already on this display nothing happens; when its
+        // window ended up elsewhere (Drive restarted and the frames' displays were made anew, or the app
+        // restarted itself, e.g. Spotify after an account switch) the window is moved back; otherwise the app
+        // is started here.
+        String pkg = component.substring(0, component.indexOf('/'));
+        int root = -1, on = -1;
+        for (String line : Sys.output("am", "stack", "list").split("\n")) {
+            java.util.regex.Matcher m = ROOT_TASK.matcher(line);
+            if (m.find()) {
+                root = Integer.parseInt(m.group(1));
+                on = Integer.parseInt(m.group(2));
+                continue;
+            }
+            if (line.contains("taskId=") && line.contains(": " + pkg + "/")) {
+                if (on == displayId) return true;
+                if (root >= 0 && Sys.run("am", "display", "move-stack", String.valueOf(root), String.valueOf(displayId)) == 0) {
+                    Sys.log("moved " + pkg + " to display " + displayId);
+                    return true;
+                }
+            }
+        }
         // 0x10000000 NEW_TASK | 0x00200000 RESET_TASK_IF_NEEDED, like a launcher tap
         return Sys.run("am", "start", "--display", String.valueOf(displayId), "--windowingMode", "1",
                 "-f", "0x10200000", "-a", "android.intent.action.MAIN",
                 "-c", "android.intent.category.LAUNCHER", "-n", component) == 0;
     }
+
+    private static final java.util.regex.Pattern ROOT_TASK =
+            java.util.regex.Pattern.compile("RootTask id=(\\d+) .*displayId=(\\d+)");
 
     @Override
     public void touch(int displayId, MotionEvent event) {
