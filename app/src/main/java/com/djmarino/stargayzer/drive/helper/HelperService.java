@@ -228,6 +228,16 @@ final class HelperService extends IDriveHelper.Stub {
     public void quit() {
         Sys.log("quit requested");
         main.post(() -> {
+            // Removing a display closes the apps on it (Maps would lose its route and settings), so first
+            // move them to the main screen; the next helper pulls them back into their frames.
+            int root = -1, on = -1;
+            for (String line : Sys.output("am", "stack", "list").split("\n")) {
+                java.util.regex.Matcher m = ROOT_TASK.matcher(line);
+                if (!m.find()) continue;
+                root = Integer.parseInt(m.group(1));
+                on = Integer.parseInt(m.group(2));
+                if (byId.containsKey(on)) Sys.run("am", "display", "move-stack", String.valueOf(root), "0");
+            }
             for (VirtualDisplay vd : byId.values()) vd.release();
             System.exit(0);
         });

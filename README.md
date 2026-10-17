@@ -50,6 +50,11 @@ First start: log in to Home Assistant once in the page that opens (keep "Keep me
 Then make it Home: Settings > Apps > Default apps > Home app, or
 `adb shell cmd package set-home-activity com.djmarino.stargayzer.drive/.MainActivity`.
 
+A helper started by the Pi runs from its own copy of the APK (/data/local/tmp/stargayzer-helper.apk), so a
+Drive update does not stop it (that used to close Maps, losing its route and settings). To load a changed
+helper, run `x10-helper.sh restart` on the Pi: it moves the framed apps to the main screen, stops the old
+helper and starts the new one, which pulls them back into their frames.
+
 Start the helper by hand (laptop):
 
 ```

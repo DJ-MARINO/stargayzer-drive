@@ -10,6 +10,7 @@
 #
 # Usage: x10-helper.sh            loop forever (service)
 #        x10-helper.sh once       one pass, then exit
+#        x10-helper.sh restart    new helper, apps kept (after a Drive update that changes the helper)
 #        x10-helper.sh stop       ask the helper to quit
 set -u
 PKG=com.djmarino.stargayzer.drive
@@ -43,9 +44,13 @@ running() {
 
 start_helper() {
   local s=$1
+  # Runs from its own copy of the APK: updating Drive replaces the installed APK, and a helper running
+  # from it died with each update, which removed the frames' displays and closed Maps (route and settings
+  # lost). A helper started from the copy keeps running; "restart" swaps it for a new one gently.
   # shellcheck disable=SC2016
   adb -s "$s" shell 'APK=$(pm path '"$PKG"' | head -1 | cut -d: -f2); [ -n "$APK" ] || exit 3;
-    CLASSPATH=$APK setsid nohup app_process /system/bin '"$MAIN"' >/data/local/tmp/stargayzer-helper.log 2>&1 &'
+    cp "$APK" /data/local/tmp/stargayzer-helper.apk || exit 4;
+    CLASSPATH=/data/local/tmp/stargayzer-helper.apk setsid nohup app_process /system/bin '"$MAIN"' >/data/local/tmp/stargayzer-helper.log 2>&1 &'
   local rc=$?
   [ $rc -eq 3 ] && log "Drive is not installed on the X10"
   sleep 2
@@ -60,6 +65,15 @@ pass() {
 
 case "${1:-loop}" in
   once) pass ;;
+  restart)
+    # Swap in a new helper without closing Maps or Spotify: removing a display closes the apps on it, so
+    # first move every app window off the frames' displays to the main screen, then stop the helper; the
+    # new one (started by the next pass) pulls them back into their frames.
+    s=$(connect) || exit 1
+    adb -s "$s" shell 'am stack list | sed -n "s/^RootTask id=\([0-9]*\) .*displayId=\([0-9]*\).*/\1 \2/p" |
+      while read id d; do [ "$d" != 0 ] && am display move-stack "$id" 0; done;
+      ps -A -o PID,ARGS | awk '\''$2=="stargayzer-helper"{print $1}'\'' | xargs -r kill'
+    sleep 2; pass ;;
   stop)
     # not pkill -f: the pattern would match this adb shell command itself
     s=$(connect) && adb -s "$s" shell 'ps -A -o PID,ARGS | awk '\''$2=="stargayzer-helper"{print $1}'\'' | xargs -r kill'
