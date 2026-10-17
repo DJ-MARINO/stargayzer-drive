@@ -112,11 +112,13 @@ final class Live {
             String title = md.getString(MediaMetadata.METADATA_KEY_TITLE);
             String artist = md.getString(MediaMetadata.METADATA_KEY_ARTIST);
             String key = pkg + "|" + title + "|" + artist;
-            if (!key.equals(artKey)) {
+            // a new track's art often arrives a moment after its title: keep asking until there is some
+            if (!key.equals(artKey) || artUrl.isEmpty()) {
                 artKey = key;
                 Bitmap b = md.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
                 if (b == null) b = md.getBitmap(MediaMetadata.METADATA_KEY_ART);
-                artUrl = b == null ? "" : png(b, 320);
+                if (b == null) b = md.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
+                artUrl = b == null ? "" : png(b, 400);
             }
             return new JSONObject().put("pkg", pkg).put("app", app)
                     .put("title", title == null ? "" : title).put("artist", artist == null ? "" : artist)
