@@ -48,7 +48,7 @@ final class VoicePause extends AudioManager.AudioRecordingCallback {
     private final Runnable resume = () -> {
         if (!pausedByUs) return;
         pausedByUs = false;
-        Live.mediaCmd(c, "play");
+        Live.mediaCmd(VoicePause.this.c, "play");
     };
 
     @Override
