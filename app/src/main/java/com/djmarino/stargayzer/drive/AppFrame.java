@@ -148,6 +148,9 @@ final class AppFrame extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        // the clipped-off strip below the frame belongs to the page underneath
+        android.graphics.Rect cb = getClipBounds();
+        if (ev.getActionMasked() == MotionEvent.ACTION_DOWN && cb != null && ev.getY() >= cb.bottom) return false;
         IDriveHelper hp = HelperLink.get();
         if (hp == null || displayId < 0) return true;
         activity.touchedFrame(this);

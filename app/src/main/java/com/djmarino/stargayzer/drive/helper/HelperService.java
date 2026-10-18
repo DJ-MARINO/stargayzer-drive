@@ -112,7 +112,9 @@ final class HelperService extends IDriveHelper.Stub {
             byName.put(name, vd);
             byId.put(id, vd);
             lockRotation(id);
-            Sys.imePolicy(id, 0);   // keyboard inside the frame (Android hides it on displays like ours)
+            // keyboard on the main screen: on the frame's own display Gboard crashed ("Display must not be null"),
+            // since a private display is invisible to every app but its owner (the helper)
+            Sys.imePolicy(id, 1);
             return id;
         });
     }

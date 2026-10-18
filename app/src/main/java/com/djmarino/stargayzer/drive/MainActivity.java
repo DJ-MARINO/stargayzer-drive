@@ -101,8 +101,12 @@ public final class MainActivity extends Activity {
         Live.start(this);
         VoicePause.start(this);
         // ATOTO's taskbar slides up over Drive on a bottom swipe; hide the bars again shortly after they show
+        // Not while typing: the keyboard for an app in a frame shows on this screen and brings the taskbar with
+        // it, and taking focus back to hide the bars would close the keyboard (and the app's text box).
         root.setOnApplyWindowInsetsListener((v, ins) -> {
-            if (ins.isVisible(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars())) {
+            boolean typing = ins.isVisible(WindowInsets.Type.ime())
+                    || (framesShown && SystemClock.uptimeMillis() - lastFrameAt < 4000);
+            if (!typing && ins.isVisible(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars())) {
                 main.removeCallbacks(rehideBars);
                 main.postDelayed(rehideBars, 1200);
             }
@@ -234,14 +238,13 @@ public final class MainActivity extends Activity {
 
     /**
      * json: [{name:"a", pkg:"com.google.android.apps.maps", x, y, w, h}] in CSS px of the page.
-     * A frame that reaches the bottom of the screen is made taller by the strip its display's bottom bar
-     * reserves (ATOTO's taskbar), so that strip runs off the screen and the app fills the visible frame.
+     * Each frame is made taller by the strip its display's bottom bar
+     * reserves (ATOTO's taskbar) and clipped to the size the page drew, so the strip never shows.
      */
     void setFrames(String json) {
         lastFrames = json;
         Set<String> shown = new HashSet<>();
         float density = getResources().getDisplayMetrics().density;
-        int screenH = root.getHeight();
         try {
             JSONArray arr = new JSONArray(json);
             for (int i = 0; i < arr.length(); i++) {
@@ -253,7 +256,11 @@ public final class MainActivity extends Activity {
                 lp.topMargin = Math.round((float) o.getDouble("y") * density);
                 lp.width = Math.max(1, Math.round((float) o.getDouble("w") * density));
                 lp.height = Math.max(1, Math.round((float) o.getDouble("h") * density));
-                if (screenH > 0 && lp.topMargin + lp.height >= screenH - 2) lp.height += f.extra();
+                // Every frame is taller than shown by the taskbar strip, clipped to the frame the page drew, so
+                // the strip stays hidden wherever the frame ends (Home's Spotify card stops above the screen edge).
+                int shownH = lp.height;
+                lp.height += f.extra();
+                f.setClipBounds(new android.graphics.Rect(0, 0, lp.width, shownH));
                 f.setLayoutParams(lp);
                 f.setPackage(o.optString("pkg", null));
                 if (HelperLink.get() != null) f.setVisibility(View.VISIBLE);
