@@ -100,6 +100,7 @@ public final class MainActivity extends Activity {
         HelperLink.listen(helperListener);
         Live.start(this);
         VoicePause.start(this);
+        WifiDebug.start(this);
         // ATOTO's taskbar slides up over Drive on a bottom swipe; hide the bars again shortly after they show
         // Not while typing: the keyboard for an app in a frame shows on this screen and brings the taskbar with
         // it, and taking focus back to hide the bars would close the keyboard (and the app's text box).
