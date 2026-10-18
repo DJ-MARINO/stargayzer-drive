@@ -159,6 +159,14 @@ final class HelperService extends IDriveHelper.Stub {
                 on = Integer.parseInt(m.group(2));
                 continue;
             }
+            // A trusted frame display gets ATOTO's secondary-display launcher as a home task; the Home key
+            // would bring it over the app. Remove it whenever it shows up (it cannot be disabled from shell).
+            if (on == displayId && line.contains("taskId=") && line.contains(": com.android.launcher3/") && root >= 0
+                    && moved.add(root)) {
+                Sys.run("am", "stack", "remove", String.valueOf(root));
+                Sys.log("removed launcher home task " + root + " from display " + displayId);
+                continue;
+            }
             if (!line.contains("taskId=") || !line.contains(": " + pkg + "/")) continue;
             open = true;
             if (on == displayId) { here = true; continue; }

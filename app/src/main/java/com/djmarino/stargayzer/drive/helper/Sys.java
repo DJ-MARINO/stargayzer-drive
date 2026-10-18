@@ -134,11 +134,16 @@ final class Sys {
      * No ROTATES_WITH_CONTENT: the display stays at its natural rotation (see HelperService.lockRotation).
      */
     static VirtualDisplay createDisplay(String name, int w, int h, int dpi, Surface surface) throws Exception {
+        // Trusted first (Oct 17 2026): only a trusted display may show the on-screen keyboard for its app
+        // (Maps' search box), and Android lets the app open its other screens there (Spotify's Now Playing
+        // went full screen on the main display before). A trusted display also gets ATOTO's secondary
+        // launcher and taskbar: the taskbar runs off the bottom of the screen, and HelperService.launch
+        // removes the launcher's home task. Untrusted remains the fallback.
         int base = FLAG_OWN_CONTENT_ONLY | FLAG_SUPPORTS_TOUCH;
         int[] tries = {
+            base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED,
             base | FLAG_OWN_DISPLAY_GROUP | FLAG_TOUCH_FEEDBACK_DISABLED,
             base,
-            base | FLAG_TRUSTED | FLAG_OWN_DISPLAY_GROUP | FLAG_ALWAYS_UNLOCKED | FLAG_TOUCH_FEEDBACK_DISABLED,
             FLAG_PUBLIC | base,
         };
         // For experiments without a rebuild: hex flag sets, comma separated, tried first.
