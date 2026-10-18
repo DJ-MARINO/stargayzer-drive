@@ -99,6 +99,15 @@ public final class MainActivity extends Activity {
 
         HelperLink.listen(helperListener);
         Live.start(this);
+        VoicePause.start(this);
+        // ATOTO's taskbar slides up over Drive on a bottom swipe; hide the bars again shortly after they show
+        root.setOnApplyWindowInsetsListener((v, ins) -> {
+            if (ins.isVisible(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars())) {
+                main.removeCallbacks(rehideBars);
+                main.postDelayed(rehideBars, 1200);
+            }
+            return v.onApplyWindowInsets(ins);
+        });
         handleIntent(getIntent());
         web.loadUrl(driveUrl());
     }
@@ -262,7 +271,22 @@ public final class MainActivity extends Activity {
      * Drive and then back to the app with each tap; some controls (Maps) spend the first tap after regaining
      * focus just taking it. While a frame shows, Drive's window does not take focus, so the app keeps it.
      */
+    private boolean framesShown;
+
+    /**
+     * Hiding the bars only takes effect for the window holding focus, and Drive gives focus up while an app
+     * frame shows (see holdFocusForFrames). So take it back for a moment, hide the bars, then hand it back.
+     */
+    private final Runnable rehideBars = () -> {
+        int nf = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        boolean held = (getWindow().getAttributes().flags & nf) != 0;
+        if (held) getWindow().clearFlags(nf);
+        immersive();
+        if (held) main.postDelayed(() -> holdFocusForFrames(framesShown), 700);
+    };
+
     private void holdFocusForFrames(boolean framesShown) {
+        this.framesShown = framesShown;
         int nf = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         boolean now = (getWindow().getAttributes().flags & nf) != 0;
         if (framesShown && !now) getWindow().addFlags(nf);

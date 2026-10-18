@@ -41,7 +41,14 @@ final class Live {
             return;
         }
         LocationManager lm = c.getSystemService(LocationManager.class);
-        LocationListener l = loc -> last = loc;
+        // The network provider reports every 10 s without speed or heading; letting one replace a fresh GPS
+        // fix showed 0 mph for a moment. Network fixes only count when GPS has been quiet for 10 s.
+        LocationListener l = loc -> {
+            Location g = last;
+            boolean gpsFresh = g != null && LocationManager.GPS_PROVIDER.equals(g.getProvider())
+                    && SystemClock.elapsedRealtimeNanos() - g.getElapsedRealtimeNanos() < 10_000_000_000L;
+            if (LocationManager.GPS_PROVIDER.equals(loc.getProvider()) || !gpsFresh) last = loc;
+        };
         try {
             for (String p : lm.getProviders(true)) {
                 Location k = lm.getLastKnownLocation(p);

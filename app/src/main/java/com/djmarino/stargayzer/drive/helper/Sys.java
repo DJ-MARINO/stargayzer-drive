@@ -171,6 +171,23 @@ final class Sys {
         throw last != null ? last : new IllegalStateException("createVirtualDisplay returned null");
     }
 
+    /**
+     * Where the on-screen keyboard shows for an app on this display: 0 on the display itself, 1 on the main
+     * display, 2 nowhere. Android hides it on untrusted virtual displays, so typing in Maps' search box in a
+     * frame brought up no keyboard. Same call scrcpy uses (IWindowManager.setDisplayImePolicy, shell may).
+     */
+    static void imePolicy(int displayId, int policy) {
+        try {
+            Class<?> sm = Class.forName("android.os.ServiceManager");
+            android.os.IBinder b = (android.os.IBinder) sm.getMethod("getService", String.class).invoke(null, "window");
+            Object wm = Class.forName("android.view.IWindowManager$Stub").getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+            wm.getClass().getMethod("setDisplayImePolicy", int.class, int.class).invoke(wm, displayId, policy);
+            log("display " + displayId + " keyboard policy " + policy);
+        } catch (Throwable t) {
+            log("keyboard policy " + displayId, t);
+        }
+    }
+
     static void inject(InputEvent event, int displayId) {
         try {
             if (inputManager == null) {

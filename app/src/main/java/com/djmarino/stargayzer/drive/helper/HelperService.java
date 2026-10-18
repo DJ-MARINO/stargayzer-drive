@@ -112,6 +112,7 @@ final class HelperService extends IDriveHelper.Stub {
             byName.put(name, vd);
             byId.put(id, vd);
             lockRotation(id);
+            Sys.imePolicy(id, 0);   // keyboard inside the frame (Android hides it on displays like ours)
             return id;
         });
     }
