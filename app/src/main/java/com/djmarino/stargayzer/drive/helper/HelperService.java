@@ -232,6 +232,17 @@ final class HelperService extends IDriveHelper.Stub {
         return inset;
     }
 
+    /** Wi-Fi off and on again (Drive asks when Android's resolver stops answering .local names). */
+    @Override
+    public void reconnectWifi() {
+        Sys.log("reconnecting Wi-Fi for Drive");
+        new Thread(() -> {
+            Sys.run("cmd", "wifi", "set-wifi-enabled", "disabled");
+            try { Thread.sleep(4000); } catch (InterruptedException ignored) {}
+            Sys.run("cmd", "wifi", "set-wifi-enabled", "enabled");
+        }, "wifi").start();
+    }
+
     @Override
     public boolean setHome(String component) {
         if (component == null || !component.matches("[\\w.]+/[\\w.$]+")) return false;

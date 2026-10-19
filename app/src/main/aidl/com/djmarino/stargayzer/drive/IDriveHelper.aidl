@@ -33,4 +33,7 @@ interface IDriveHelper {
     boolean setHome(String component);
 
     void quit();
+
+    // Wi-Fi off and on again: clears Android's resolver when it stops answering .local names.
+    oneway void reconnectWifi();
 }

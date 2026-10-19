@@ -311,7 +311,14 @@ public final class MainActivity extends Activity {
         main.post(() -> web.loadUrl(driveUrl()));
     }
 
-    /** From the offline page: try HA again in the background, load Drive when it answers. */
+    /**
+     * From the offline page: try HA again in the background, load Drive when it answers. When Android cannot
+     * resolve the hub's .local name but the hub answers our own multicast question (and its port is open),
+     * Android's resolver is stuck (Oct 19 2026, after a Wi-Fi drop): ask the helper to reconnect Wi-Fi, which
+     * clears it, at most once every 10 minutes.
+     */
+    private static long wifiBouncedAt;
+
     void retry() {
         new Thread(() -> {
             boolean ok = false;
@@ -323,9 +330,36 @@ public final class MainActivity extends Activity {
                 c.disconnect();
             } catch (Exception ignored) {
             }
-            if (ok) reload();
-            else js("window.sgaOffline&&sgaOffline()");
+            if (ok) { reload(); return; }
+            Uri u = Uri.parse(driveUrl());
+            String host = u.getHost();
+            if (host != null && host.endsWith(".local") && !resolves(host)) {
+                java.net.InetAddress ip = Mdns.resolve(host, 1500);
+                if (ip != null && portOpen(ip, u.getPort() > 0 ? u.getPort() : 80)
+                        && SystemClock.elapsedRealtime() - wifiBouncedAt > 10 * 60_000) {
+                    IDriveHelper hp = HelperLink.get();
+                    if (hp != null) {
+                        wifiBouncedAt = SystemClock.elapsedRealtime();
+                        Log.w(TAG, host + " answers at " + ip.getHostAddress() + " but Android cannot resolve it: reconnecting Wi-Fi");
+                        try { hp.reconnectWifi(); } catch (RemoteException e) { Log.w(TAG, "reconnect Wi-Fi", e); }
+                    }
+                }
+            }
+            js("window.sgaOffline&&sgaOffline()");
         }, "retry").start();
+    }
+
+    private static boolean resolves(String host) {
+        try { java.net.InetAddress.getByName(host); return true; } catch (Exception e) { return false; }
+    }
+
+    private static boolean portOpen(java.net.InetAddress ip, int port) {
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress(ip, port), 2000);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     boolean isHaPage(String url) {
